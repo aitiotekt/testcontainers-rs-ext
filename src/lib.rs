@@ -1,6 +1,9 @@
 #![crate_name = "testcontainers_ext"]
 
-use bollard::container::ListContainersOptions;
+use bollard::{
+    query_parameters::ListContainersOptions, query_parameters::StopContainerOptions,
+    secret::ContainerSummaryStateEnum,
+};
 use std::future::Future;
 use testcontainers::{ContainerRequest, Image, ImageExt, TestcontainersError};
 
@@ -41,7 +44,7 @@ where
     ) -> impl Future<Output = Result<ContainerRequest<I>, TestcontainersError>> + Send {
         use std::collections::HashMap;
 
-        use bollard::container::PruneContainersOptions;
+        use bollard::query_parameters::PruneContainersOptions;
         use testcontainers::core::client::docker_client_instance;
 
         let testcontainers_project_key = format!("{scope}.testcontainers.scope");
@@ -67,7 +70,7 @@ where
                     let result = client
                         .list_containers(Some(ListContainersOptions {
                             all: false,
-                            filters: filters.clone(),
+                            filters: Some(filters.clone()),
                             ..Default::default()
                         }))
                         .await
@@ -75,14 +78,17 @@ where
 
                     let remove_containers = result
                         .iter()
-                        .filter(|c| matches!(c.state.as_deref(), Some("running")))
+                        .filter(|c| {
+                            c.state
+                                .is_some_and(|s| matches!(s, ContainerSummaryStateEnum::RUNNING))
+                        })
                         .flat_map(|c| c.id.as_deref())
                         .collect::<Vec<_>>();
 
                     futures::future::try_join_all(
                         remove_containers
                             .iter()
-                            .map(|c| client.stop_container(c, None)),
+                            .map(|c| client.stop_container(c, None::<StopContainerOptions>)),
                     )
                     .await
                     .map_err(|error| TestcontainersError::Other(Box::new(error)))?;
@@ -94,7 +100,9 @@ where
                 }
 
                 let _result = client
-                    .prune_containers(Some(PruneContainersOptions { filters }))
+                    .prune_containers(Some(PruneContainersOptions {
+                        filters: Some(filters),
+                    }))
                     .await
                     .map_err(|err| TestcontainersError::Other(Box::new(err)))?;
 
