@@ -1,12 +1,12 @@
 [package]
 name = "testcontainers-ext"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 description = "Utilities collection of extension traits for testcontainers-rs."
 keywords = ["docker", "testcontainers"]
 authors = ["Yeheng Zhou <root@aitiotekt.com>"]
 license = "MIT"
-repository = "https://github.com/lonelyhentxi/testcontainers-rs-ext"
+repository = "https://github.com/aitiotekt/testcontainers-rs-ext.git"
 readme = "README.md"
 
 [features]
@@ -14,11 +14,11 @@ default = []
 tracing = ["dep:tracing"]
 
 [dependencies]
-bollard = { version = ">=0.20" }
+bollard = { version = ">=0.20.2" }
 futures = { version = ">=0.3" }
 log = { version = ">=0.4" }
-testcontainers = { version = ">=0.27" }
-testcontainers-modules = { version = ">=0.15" }
+testcontainers = { version = ">=0.27.1" }
+testcontainers-modules = { version = ">=0.15.0" }
 tracing = { version = ">=0.1", optional = true }
 
 [dev-dependencies]

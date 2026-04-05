@@ -1,8 +1,8 @@
 #![crate_name = "testcontainers_ext"]
 
 use bollard::{
-    query_parameters::ListContainersOptions, query_parameters::StopContainerOptions,
-    secret::ContainerSummaryStateEnum,
+    models::ContainerSummaryStateEnum, query_parameters::ListContainersOptions,
+    query_parameters::StopContainerOptions,
 };
 use std::future::Future;
 use testcontainers::{ContainerRequest, Image, ImageExt, TestcontainersError};
@@ -99,20 +99,28 @@ where
                     }
                 }
 
-                let _result = client
+                let prune_result = client
                     .prune_containers(Some(PruneContainersOptions {
                         filters: Some(filters),
                     }))
-                    .await
-                    .map_err(|err| TestcontainersError::Other(Box::new(err)))?;
+                    .await;
 
-                #[cfg(feature = "tracing")]
-                if _result
-                    .containers_deleted
-                    .as_ref()
-                    .is_some_and(|c| !c.is_empty())
-                {
-                    tracing::warn!(name = "prune existed containers", result = ?_result);
+                match prune_result {
+                    Ok(_result) => {
+                        #[cfg(feature = "tracing")]
+                        if _result
+                            .containers_deleted
+                            .as_ref()
+                            .is_some_and(|c| !c.is_empty())
+                        {
+                            tracing::warn!(name = "prune existed containers", result = ?_result);
+                        }
+                    }
+                    Err(bollard::errors::Error::DockerResponseServerError { status_code: 409, .. }) => {
+                        #[cfg(feature = "tracing")]
+                        tracing::debug!("Concurrent prune currently in progress, safely ignoring HTTP 409.");
+                    }
+                    Err(err) => return Err(TestcontainersError::Other(Box::new(err))),
                 }
             }
 
